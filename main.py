@@ -67,14 +67,31 @@ def parse_moves(moves_str):
 moves_list = parse_moves(info["moves"])
 
 board = chess.Board()
+
+# ▶▶▶ 겜빗 진행 순서 단계별 보여주기 추가
+
+st.subheader("겜빗 진행 단계별")
+
+for i in range(1, len(moves_list)+1):
+    step_moves = moves_list[:i]
+    board_tmp = chess.Board()
+    for move_san in step_moves:
+        try:
+            move = board_tmp.parse_san(move_san)
+            board_tmp.push(move)
+        except:
+            pass
+    svg_partial = chess.svg.board(board=board_tmp, size=300)
+    st.markdown(f"**Step {i}: {move_san}**")
+    st.components.v1.html(svg_partial, height=320)
+
+# 전체 수순 적용한 체스판 출력 (마지막)
+svg_board = chess.svg.board(board=board, size=400)
 for move_san in moves_list:
     try:
         move = board.parse_san(move_san)
         board.push(move)
     except:
         pass
-
-svg_board = chess.svg.board(board=board, size=400)
-
-# SVG를 Streamlit에 직접 HTML로 출력
+st.subheader("최종 위치")
 st.components.v1.html(svg_board, height=420)
