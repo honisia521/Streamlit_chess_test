@@ -1,5 +1,2 @@
-pip install streamlit streamlit-chessboard
-
 streamlit
-streamlit-chessboard
 python-chess
