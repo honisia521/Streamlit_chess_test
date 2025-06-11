@@ -1,9 +1,11 @@
+
 import streamlit as st
-from streamlit_chessboard import chessboard
+import chess
+import chess.svg
+import cairosvg
 
 st.title("체스 겜빗 오프닝 가이드")
 
-# 겜빗 오프닝 계층 구조 (예시)
 gambits = {
     "English Gambit": {
         "Trap Line": {
@@ -42,7 +44,7 @@ gambits = {
 # 1단계: 겜빗 종류 선택
 gambit_type = st.selectbox("겜빗 종류 선택", list(gambits.keys()))
 
-# 2단계: 세부 라인 선택 (예: Trap Line, Main Line 등)
+# 2단계: 세부 라인 선택
 line_type = st.selectbox("라인 선택", list(gambits[gambit_type].keys()))
 
 # 3단계: 세부 변형 선택
@@ -51,15 +53,10 @@ variation = st.selectbox("변형 선택", list(gambits[gambit_type][line_type].k
 # 선택된 변형 정보 가져오기
 info = gambits[gambit_type][line_type][variation]
 
-# 설명 출력
 st.subheader(f"{variation} ({line_type})")
 st.write(info["description"])
 st.code(info["moves"])
 
-# 체스판 위에 수순 표시
-# streamlit-chessboard는 PGN 형식을 바로 지원하지 않으므로, moves를 PGN 변환 필요. 간단한 공백 기준 수순 리스트로 표시 가능.
-
-# moves 문자열 -> 리스트 변환 (예: '1. d4 d5 2. c4 e6' -> ['d4','d5','c4','e6'])
 def parse_moves(moves_str):
     parts = moves_str.split()
     moves = []
@@ -71,6 +68,23 @@ def parse_moves(moves_str):
 
 moves_list = parse_moves(info["moves"])
 
-# 체스판 위에 현재 상태 표시
-# streamlit-chessboard의 chessboard() 함수에 moves= 리스트 형태로 넘겨서 초기 위치 세팅 가능
-chessboard(moves=moves_list)
+# 빈 체스판 초기화
+board = chess.Board()
+
+# moves_list를 순차적으로 두기
+for move_san in moves_list:
+    try:
+        move = board.parse_san(move_san)
+        board.push(move)
+    except:
+        # parse 실패 시 무시
+        pass
+
+# SVG 생성
+svg_board = chess.svg.board(board=board, size=400)
+
+# SVG를 PNG로 변환
+png_board = cairosvg.svg2png(bytestring=svg_board)
+
+# 체스판 이미지 표시
+st.image(png_board, caption="현재 체스 보드", use_column_width=False)
