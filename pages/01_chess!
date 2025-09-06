@@ -1,0 +1,76 @@
+import streamlit as st
+import chess
+import chess.svg
+import cairosvg
+from stockfish import Stockfish
+import os
+
+# === 사용자 설정 ===
+STOCKFISH_PATH = "C:/Users/yourname/Downloads/stockfish/stockfish.exe"  # ← 여기에 본인 경로 입력하세요
+if not os.path.isfile(STOCKFISH_PATH):
+    st.error("❌ Stockfish 실행 파일 경로가 잘못되었습니다. 코드에서 수정해주세요.")
+    st.stop()
+
+# Stockfish 초기화
+stockfish = Stockfish(path=STOCKFISH_PATH, parameters={"Threads": 2, "Minimum Thinking Time": 100})
+
+# 세션 상태 초기화
+if "board" not in st.session_state:
+    st.session_state.board = chess.Board()
+if "game_over" not in st.session_state:
+    st.session_state.game_over = False
+
+st.set_page_config(page_title="체스 vs AI", page_icon="♟️")
+st.title("♟️ 체스 AI와 한판 두기")
+st.markdown("UCI 포맷으로 수를 입력하세요. 예: `e2e4`, `g1f3`")
+
+# 체스 보드 그리기
+def draw_board(board):
+    svg = chess.svg.board(board=board, size=400)
+    cairosvg.svg2png(bytestring=svg.encode('utf-8'), write_to="board.png")
+    st.image("board.png", use_column_width=False)
+
+draw_board(st.session_state.board)
+
+# 사용자 수 입력
+move_input = st.text_input("당신의 수:", max_chars=5, help="예: e2e4")
+
+if st.button("내 수 두기") and not st.session_state.game_over:
+    try:
+        move = chess.Move.from_uci(move_input.strip())
+        if move in st.session_state.board.legal_moves:
+            st.session_state.board.push(move)
+
+            if not st.session_state.board.is_game_over():
+                # Stockfish로 현재 보드 상태 설정
+                stockfish.set_fen_position(st.session_state.board.fen())
+                ai_move = stockfish.get_best_move()
+                if ai_move:
+                    st.session_state.board.push_uci(ai_move)
+            else:
+                st.session_state.game_over = True
+        else:
+            st.warning("🚫 잘못된 수입니다. 다시 입력해주세요.")
+    except Exception as e:
+        st.warning(f"❗ 오류: {e}")
+
+    draw_board(st.session_state.board)
+
+# 게임 종료 메시지
+if st.session_state.board.is_game_over():
+    st.session_state.game_over = True
+    result = st.session_state.board.result()
+    if st.session_state.board.is_checkmate():
+        st.success(f"체크메이트! 결과: {result}")
+    elif st.session_state.board.is_stalemate():
+        st.info("스테일메이트 (무승부)")
+    elif st.session_state.board.is_insufficient_material():
+        st.info("기물 부족으로 무승부")
+    else:
+        st.info(f"게임 종료: {result}")
+
+# 새 게임 버튼
+if st.button("🔁 새 게임 시작"):
+    st.session_state.board = chess.Board()
+    st.session_state.game_over = False
+    st.experimental_rerun()
